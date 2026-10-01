@@ -33,6 +33,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('vanguard_auth_token');
+      }
       const errorMessage = data?.error || response.statusText || 'An API error occurred';
       throw new ApiError(errorMessage, response.status);
     }

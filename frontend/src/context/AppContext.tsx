@@ -210,52 +210,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsLoading(true);
       setError(null);
 
-      const [
-        profileRes,
-        publishersRes,
-        booksRes,
-        stationeryRes,
-        schoolsRes,
-        ordersRes,
-        poRes,
-        movementsRes,
-        staffRes,
-        userRes,
-        logsRes,
-      ] = await Promise.all([
-        businessProfileApi.getProfile(),
-        publisherApi.getPublishers(),
-        bookApi.getBooks(),
-        stationeryApi.getStationery(),
-        schoolApi.getSchools(),
-        orderApi.getOrders(),
-        purchaseOrderApi.getPurchaseOrders(),
-        inventoryApi.getMovements(100),
-        authApi.getStaff(),
-        authApi.getCurrentUser(),
-        authApi.getLoginLogs(),
+      // 1. Fetch public / foundational catalog data
+      const [profileRes, schoolsRes, booksRes, stationeryRes] = await Promise.all([
+        businessProfileApi.getProfile().catch(() => ({
+          businessName: 'Vanguard Book Distributors',
+          tagline: 'Authorized Academic Dealer',
+          address: 'Plot 42, Academic Arcade, Central District',
+          phone: '+91 98765 43210',
+          email: 'orders@vanguardbooks.com',
+          gstin: '07AAAAA0000A1Z5',
+          dealerLicenseNo: 'DL-EDU-2024-9842',
+          currencySymbol: '₹',
+        })),
+        schoolApi.getSchools().catch(() => []),
+        bookApi.getBooks().catch(() => []),
+        stationeryApi.getStationery().catch(() => []),
       ]);
 
       setBusinessProfile(profileRes);
-      setPublishers(publishersRes);
+      setSchools(schoolsRes);
       setBooks(booksRes);
       setStationery(stationeryRes);
-      setSchools(schoolsRes);
-      setOrders(ordersRes);
-      setPurchaseOrders(poRes);
-      setStockMovements(movementsRes);
-      setStaff(staffRes);
-      setLoginLogs(logsRes);
+
+      // 2. Check current authentication session
+      let userRes: StaffPartner | null = null;
+      try {
+        userRes = await authApi.getCurrentUser();
+      } catch {
+        localStorage.removeItem('vanguard_auth_token');
+        userRes = null;
+      }
+
       if (userRes) {
         setCurrentUserState(userRes);
         if (userRes.token) {
           localStorage.setItem('vanguard_auth_token', userRes.token);
         }
+
+        // 3. Fetch authenticated data
+        const [publishersRes, ordersRes, poRes, movementsRes, staffRes, logsRes] = await Promise.all([
+          publisherApi.getPublishers().catch(() => []),
+          orderApi.getOrders().catch(() => []),
+          purchaseOrderApi.getPurchaseOrders().catch(() => []),
+          inventoryApi.getMovements(100).catch(() => []),
+          authApi.getStaff().catch(() => []),
+          authApi.getLoginLogs().catch(() => []),
+        ]);
+
+        setPublishers(publishersRes);
+        setOrders(ordersRes);
+        setPurchaseOrders(poRes);
+        setStockMovements(movementsRes);
+        setStaff(staffRes);
+        setLoginLogs(logsRes);
+      } else {
+        localStorage.removeItem('vanguard_auth_token');
       }
     } catch (err: any) {
       console.error('Failed to fetch data from backend:', err);
-      setError(err?.message || 'Error communicating with backend REST API');
-      showToast('Could not load backend data. Please ensure the server is running.', 'error');
+      if (!err?.message?.includes('token') && !err?.message?.includes('Authentication')) {
+        setError(err?.message || 'Error communicating with backend REST API');
+        showToast('Could not load backend data. Please ensure the server is running.', 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -295,6 +311,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsAuthModalOpen(false);
       setIsLoginPageOpen(false);
       showToast(`Welcome, ${res.user.name} (${res.user.role})! Logged in to ${terminal}`, 'success');
+      await refreshData();
     } catch (err: any) {
       showToast(err.message || 'Authentication failed', 'error');
       throw err;
@@ -305,12 +322,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logoutUser = async () => {
     try {
-      await authApi.logout(currentUser.id, currentUser.token);
-      const updatedLogs = await authApi.getLoginLogs();
-      setLoginLogs(updatedLogs);
-      showToast(`Session ended for ${currentUser.name}. Please select a user profile to log in.`, 'info');
+      await authApi.logout(currentUser?.id, currentUser?.token);
+      localStorage.removeItem('vanguard_auth_token');
+      showToast(`Session ended for ${currentUser?.name || 'user'}.`, 'info');
       setIsLoginPageOpen(true);
+      await refreshData();
     } catch (err: any) {
+      localStorage.removeItem('vanguard_auth_token');
       showToast(err.message || 'Logout error', 'error');
     }
   };
