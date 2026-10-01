@@ -9,6 +9,7 @@ import { orderService } from '../services/orderService.js';
 import { inventoryService } from '../services/inventoryService.js';
 import { purchaseOrderService } from '../services/purchaseOrderService.js';
 import { dashboardService, reportService } from '../services/dashboardService.js';
+import { getStore, resetStore, restoreStore } from '../data/store.js';
 
 const router = Router();
 
@@ -497,6 +498,44 @@ router.get('/reports/summary', (req: Request, res: Response) => {
   try {
     const summary = reportService.getExecutiveSummary();
     return sendSuccess(res, summary);
+  } catch (err) {
+    return sendError(res, err);
+  }
+});
+
+// ======================== ADMIN DATABASE READY UTILITIES ========================
+router.get('/admin/backup', (req: Request, res: Response) => {
+  try {
+    const currentStore = getStore();
+    return sendSuccess(res, {
+      version: '2.4.0',
+      exportedAt: new Date().toISOString(),
+      system: 'Vanguard Book Dealer Management System',
+      store: currentStore,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+});
+
+router.post('/admin/restore', (req: Request, res: Response) => {
+  try {
+    const payload = req.body;
+    const storeToRestore = payload.store || payload;
+    if (!storeToRestore || typeof storeToRestore !== 'object') {
+      return sendError(res, 'Invalid backup data format', 400);
+    }
+    const updated = restoreStore(storeToRestore);
+    return sendSuccess(res, { message: 'Database restored successfully', store: updated });
+  } catch (err) {
+    return sendError(res, err);
+  }
+});
+
+router.post('/admin/reset', (req: Request, res: Response) => {
+  try {
+    const reset = resetStore();
+    return sendSuccess(res, { message: 'Database reset to benchmark showroom defaults', store: reset });
   } catch (err) {
     return sendError(res, err);
   }

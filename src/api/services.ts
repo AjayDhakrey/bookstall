@@ -227,3 +227,17 @@ export const reportApi = {
       publishers: Publisher[];
     }>('/reports/summary'),
 };
+
+export const adminApi = {
+  getBackup: () =>
+    api.get<{
+      version: string;
+      exportedAt: string;
+      system: string;
+      store: any;
+    }>('/admin/backup'),
+  restore: (storeOrBackup: any) =>
+    api.post<{ message: string; store: any }>('/admin/restore', storeOrBackup),
+  reset: () =>
+    api.post<{ message: string; store: any }>('/admin/reset'),
+};

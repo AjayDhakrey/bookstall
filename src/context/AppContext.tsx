@@ -27,6 +27,7 @@ import {
   orderApi,
   inventoryApi,
   purchaseOrderApi,
+  adminApi,
 } from '../api/services';
 
 interface AppContextType {
@@ -34,6 +35,12 @@ interface AppContextType {
   isLoading: boolean;
   error: string | null;
   refreshData: () => Promise<void>;
+
+  // Database Ready Utilities & Exports
+  backupDatabase: () => Promise<void>;
+  restoreDatabase: (file: File) => Promise<void>;
+  resetDatabaseDefaults: () => Promise<void>;
+  exportToCSV: (type: 'inventory' | 'orders' | 'schools') => void;
 
   businessProfile: BusinessProfile;
   publishers: Publisher[];
@@ -671,6 +678,212 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // ---------------- DATABASE READY ARCHITECTURE & BACKUP/RESTORE ----------------
+
+  const backupDatabase = async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const res = await adminApi.getBackup();
+      const jsonStr = JSON.stringify(res, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `vanguard_dealer_backup_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Complete ERP database backup downloaded successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to download database backup', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const restoreDatabase = async (file: File): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      await adminApi.restore(parsed);
+      await refreshData();
+      showToast('Database successfully restored from backup file', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to restore database from file', 'error');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetDatabaseDefaults = async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      await adminApi.reset();
+      await refreshData();
+      showToast('Database reset to factory showroom benchmark data', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to reset database defaults', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const exportToCSV = (type: 'inventory' | 'orders' | 'schools'): void => {
+    try {
+      let csvContent = '';
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `vanguard_${type}_${dateStr}.csv`;
+
+      if (type === 'inventory') {
+        const headers = [
+          'Type',
+          'Item ID',
+          'Title/Item Name',
+          'Publisher/Category',
+          'Applicable Class',
+          'Subject',
+          'ISBN',
+          'Current Stock',
+          'Min Safety Threshold',
+          'Purchase Price',
+          'Selling Price (MRP)',
+          'Stock Valuation',
+          'Stock Status',
+        ];
+        const rows: string[][] = [];
+
+        books.forEach((b) => {
+          const val = b.currentStock * b.purchasePrice;
+          const status =
+            b.currentStock <= 0
+              ? 'Out of Stock'
+              : b.currentStock <= b.minStock
+              ? 'Low Stock'
+              : 'Optimal';
+          rows.push([
+            'Book',
+            b.id,
+            `"${(b.name || '').replace(/"/g, '""')}"`,
+            `"${(b.publisherName || '').replace(/"/g, '""')}"`,
+            b.applicableClass || 'All',
+            b.subject || 'General',
+            `"${b.isbn || 'N/A'}"`,
+            String(b.currentStock),
+            String(b.minStock),
+            String(b.purchasePrice),
+            String(b.sellingPrice),
+            String(val),
+            status,
+          ]);
+        });
+
+        stationery.forEach((s) => {
+          const val = s.currentStock * s.purchasePrice;
+          const status =
+            s.currentStock <= 0
+              ? 'Out of Stock'
+              : s.currentStock <= s.minStock
+              ? 'Low Stock'
+              : 'Optimal';
+          rows.push([
+            'Stationery',
+            s.id,
+            `"${(s.name || '').replace(/"/g, '""')}"`,
+            `"${(s.category || '').replace(/"/g, '""')}"`,
+            s.unit || 'Piece',
+            'Stationery',
+            'N/A',
+            String(s.currentStock),
+            String(s.minStock),
+            String(s.purchasePrice),
+            String(s.sellingPrice),
+            String(val),
+            status,
+          ]);
+        });
+
+        csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      } else if (type === 'orders') {
+        const headers = [
+          'Order ID',
+          'Created Date',
+          'Sales Channel',
+          'School',
+          'Student Name',
+          'Class',
+          'Phone',
+          'Items Count',
+          'Subtotal',
+          'Discount',
+          'Grand Total',
+          'Paid Amount',
+          'Payment Status',
+          'Order Status',
+        ];
+        const rows = orders.map((o) => [
+          o.id,
+          o.createdAt || 'N/A',
+          o.source || 'Store',
+          `"${(o.schoolName || '').replace(/"/g, '""')}"`,
+          `"${(o.studentName || '').replace(/"/g, '""')}"`,
+          o.classId || 'N/A',
+          o.phone || 'N/A',
+          String(o.items.length),
+          String(o.subtotal || 0),
+          String(o.discount || 0),
+          String(o.total || 0),
+          String(o.paidAmount || 0),
+          o.paymentStatus,
+          o.orderStatus,
+        ]);
+        csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      } else if (type === 'schools') {
+        const headers = [
+          'School Code',
+          'School Name',
+          'City',
+          'Contact Person',
+          'Phone',
+          'Email',
+          'Address',
+          'Classes Covered',
+          'Prescribed Books Count',
+          'Prescribed Stationery Count',
+        ];
+        const rows = schools.map((s) => [
+          s.code,
+          `"${(s.name || '').replace(/"/g, '""')}"`,
+          s.city || 'N/A',
+          `"${(s.contactPerson || '').replace(/"/g, '""')}"`,
+          s.phone || 'N/A',
+          s.email || 'N/A',
+          `"${(s.address || '').replace(/"/g, '""')}"`,
+          `"${(s.classes || []).join('; ')}"`,
+          String((s.bookMappings || []).length),
+          String((s.stationeryMappings || []).length),
+        ]);
+        csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Exported ${type} master register to CSV successfully`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to export CSV', 'error');
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -739,6 +952,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addStaff,
         updateStaff,
         updateBusinessProfile,
+        backupDatabase,
+        restoreDatabase,
+        resetDatabaseDefaults,
+        exportToCSV,
       }}
     >
       {children}

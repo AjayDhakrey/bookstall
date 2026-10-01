@@ -638,3 +638,35 @@ export const updateStore = (updater: (prev: DataStore) => DataStore): DataStore 
   dataStore = updater(dataStore);
   return dataStore;
 };
+
+export const resetStore = (): DataStore => {
+  dataStore = {
+    businessProfile: { ...defaultProfile },
+    publishers: JSON.parse(JSON.stringify(defaultPublishers)),
+    books: JSON.parse(JSON.stringify(defaultBooks)),
+    stationery: JSON.parse(JSON.stringify(defaultStationery)),
+    schools: JSON.parse(JSON.stringify(defaultSchools)),
+    orders: JSON.parse(JSON.stringify(defaultOrders)),
+    purchaseOrders: JSON.parse(JSON.stringify(defaultPurchaseOrders)),
+    stockMovements: JSON.parse(JSON.stringify(defaultStockMovements)),
+    staff: JSON.parse(JSON.stringify(defaultStaff)),
+    loginLogs: JSON.parse(JSON.stringify(defaultLoginLogs)),
+  };
+  return dataStore;
+};
+
+export const restoreStore = (newStore: Partial<DataStore>): DataStore => {
+  dataStore = {
+    businessProfile: newStore.businessProfile || dataStore.businessProfile,
+    publishers: newStore.publishers || dataStore.publishers,
+    books: newStore.books || dataStore.books,
+    stationery: newStore.stationery || dataStore.stationery,
+    schools: newStore.schools || dataStore.schools,
+    orders: newStore.orders || dataStore.orders,
+    purchaseOrders: newStore.purchaseOrders || dataStore.purchaseOrders,
+    stockMovements: newStore.stockMovements || dataStore.stockMovements,
+    staff: newStore.staff || dataStore.staff,
+    loginLogs: newStore.loginLogs || dataStore.loginLogs,
+  };
+  return dataStore;
+};
