@@ -1,0 +1,118 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["book_dealer", "public"]
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+model StoreMeta {
+  singleton   Boolean @id @default(true)
+  revision    BigInt  @default(0)
+  initialized Boolean @default(false)
+
+  @@map("store_meta")
+  @@schema("book_dealer")
+}
+
+model BusinessProfileRecord {
+  singleton Boolean @id @default(true)
+  payload   Json
+
+  @@map("business_profile")
+  @@schema("book_dealer")
+}
+
+model PublisherRecord {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "publishers_app_id_idx")
+  @@map("publishers")
+  @@schema("book_dealer")
+}
+
+model BookRecord {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "books_app_id_idx")
+  @@map("books")
+  @@schema("book_dealer")
+}
+
+model StationeryRecord {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "stationery_app_id_idx")
+  @@map("stationery")
+  @@schema("book_dealer")
+}
+
+model SchoolRecord {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "schools_app_id_idx")
+  @@map("schools")
+  @@schema("book_dealer")
+}
+
+model OrderRecord {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "orders_app_id_idx")
+  @@map("orders")
+  @@schema("book_dealer")
+}
+
+model PurchaseOrderRecord {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "purchase_orders_app_id_idx")
+  @@map("purchase_orders")
+  @@schema("book_dealer")
+}
+
+model StockMovementRecordEntity {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "stock_movements_app_id_idx")
+  @@map("stock_movements")
+  @@schema("book_dealer")
+}
+
+model StaffRecord {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "staff_app_id_idx")
+  @@map("staff")
+  @@schema("book_dealer")
+}
+
+model LoginLogRecordEntity {
+  position BigInt  @id
+  payload  Json
+  appId    String? @map("app_id")
+
+  @@index([appId], map: "login_logs_app_id_idx")
+  @@map("login_logs")
+  @@schema("book_dealer")
+}
+
