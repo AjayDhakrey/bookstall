@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import pg from 'pg';
 import { loadServerEnvironment, projectRoot } from '../backend/src/config/environment.js';
 import { createConfiguredRepository } from '../backend/src/config/database.js';
-import { createEmptyStore } from '../backend/src/repositories/store.js';
+import { createDefaultStore, createEmptyStore } from '../backend/src/repositories/store.js';
 import { verifySchema } from './verifySchema.js';
 
 loadServerEnvironment();
