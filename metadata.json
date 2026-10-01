@@ -1,0 +1,6 @@
+{
+  "name": "Book Dealer Management System",
+  "description": "Complete enterprise management system for book dealers handling school catalogues, book & stationery inventories, multi-channel orders, publisher procurement, and public parent links.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
