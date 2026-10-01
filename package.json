@@ -15,7 +15,8 @@
     "db:migrate": "tsx scripts/database.ts migrate",
     "db:schema": "tsx scripts/database.ts schema",
     "db:check": "tsx scripts/database.ts check",
-    "db:verify": "tsx scripts/database.ts verify"
+    "db:verify": "tsx scripts/database.ts verify",
+    "db:seed": "tsx scripts/database.ts seed"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

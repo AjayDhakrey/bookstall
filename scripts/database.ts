@@ -98,12 +98,28 @@ async function check(verify: boolean) {
   }
 }
 
+async function seed() {
+  const repository = createConfiguredRepository({ ...process.env, DATA_STORE: process.env.DATA_STORE || 'supabase' });
+  const defaultData = createDefaultStore();
+  await repository.initialize(defaultData);
+  const snapshot = await repository.load();
+  await repository.save(defaultData, snapshot.revision);
+  console.log(`Database seeded with practical benchmark data:`);
+  console.log(`- ${defaultData.publishers.length} Publishers`);
+  console.log(`- ${defaultData.books.length} Books & ${defaultData.stationery.length} Stationery items`);
+  console.log(`- ${defaultData.schools.length} Partner Schools & Booksets`);
+  console.log(`- ${defaultData.orders.length} Real Sample Orders with Payment Records`);
+  console.log(`- ${defaultData.purchaseOrders.length} Purchase Orders`);
+  console.log(`- ${defaultData.staff.length} Staff Accounts (Password: admin123)`);
+}
+
 try {
   const command = process.argv[2];
   if (command === 'migrate') await migrate();
   else if (command === 'schema') await withPostgres(inspectSchema);
   else if (command === 'check' || command === 'verify') await check(command === 'verify');
-  else throw new Error('Use npm run db:migrate, db:schema, db:check, or db:verify.');
+  else if (command === 'seed') await seed();
+  else throw new Error('Use npm run db:migrate, db:schema, db:check, db:verify, or db:seed.');
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'Database command failed.');
   process.exitCode = 1;
